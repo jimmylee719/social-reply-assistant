@@ -4,9 +4,7 @@ import { Gender, Goal, TargetProfile, TopicCategory, Interaction, AssistantMode,
 import { saveInteraction } from './userService';
 
 const getClient = () => {
-  if (!process.env.API_KEY) {
-     console.warn("API_KEY is not set. Using a placeholder. API calls will fail.");
-  }
+  // FIX: Per coding guidelines, the API key must be obtained from process.env.API_KEY.
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
