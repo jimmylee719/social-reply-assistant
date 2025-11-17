@@ -35,7 +35,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onStartAssis
             <div className="flex items-center gap-4">
                 <button 
                     onClick={onShowProfile} 
-                    className="px-4 py-2 bg-surface text-text-secondary font-semibold rounded-lg hover:bg-gray-600 transition-colors shadow-md text-sm"
+                    className="px-4 py-2 bg-gray-800 text-gray-300 font-semibold rounded-lg hover:bg-gray-600 transition-colors shadow-md text-sm"
                 >
                     個人資訊
                 </button>
@@ -48,7 +48,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onStartAssis
             </div>
         </header>
         
-        <div className="bg-surface p-6 rounded-2xl shadow-2xl">
+        <div className="bg-gray-800 p-6 rounded-2xl shadow-2xl">
             <h2 className="text-2xl font-bold mb-4">選擇或建立對話目標</h2>
             
             <div className="space-y-3 mb-6">
@@ -57,13 +57,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onStartAssis
                         <button 
                             key={target.id}
                             onClick={() => onStartAssistant(target)}
-                            className="w-full text-left p-4 bg-background rounded-lg border border-gray-700 hover:border-primary transition-colors duration-200"
+                            className="w-full text-left p-4 bg-gray-900 rounded-lg border border-gray-700 hover:border-violet-600 transition-colors duration-200"
                         >
-                            <p className="font-semibold text-lg text-text-primary">{target.name}</p>
+                            <p className="font-semibold text-lg text-gray-50">{target.name}</p>
                         </button>
                     ))
                 ) : (
-                    !isAdding && <p className="text-text-secondary text-center p-4">您還沒有建立任何對話目標。點擊下方按鈕開始！</p>
+                    !isAdding && <p className="text-gray-300 text-center p-4">您還沒有建立任何對話目標。點擊下方按鈕開始！</p>
                 )}
             </div>
 
@@ -74,15 +74,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onStartAssis
                         value={newTargetName}
                         onChange={(e) => setNewTargetName(e.target.value)}
                         placeholder="輸入對方的名字或暱稱"
-                        className="flex-grow p-3 bg-background rounded-lg border border-gray-600 focus:ring-2 focus:ring-primary"
+                        className="flex-grow p-3 bg-gray-900 rounded-lg border border-gray-600 focus:ring-2 focus:ring-violet-600"
                         onKeyPress={(e) => e.key === 'Enter' && handleAddTarget()}
                     />
-                    <button onClick={handleAddTarget} className="px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-primary-focus">儲存</button>
+                    <button onClick={handleAddTarget} className="px-4 py-2 bg-violet-600 text-white font-bold rounded-lg hover:bg-violet-700">儲存</button>
                     <button onClick={() => setIsAdding(false)} className="px-4 py-2 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-500">取消</button>
                 </div>
             ) : (
                 <div className="text-center">
-                    <button onClick={() => setIsAdding(true)} className="px-6 py-3 bg-primary text-white font-bold rounded-full hover:bg-primary-focus transition-transform transform hover:scale-105">
+                    <button onClick={() => setIsAdding(true)} className="px-6 py-3 bg-violet-600 text-white font-bold rounded-full hover:bg-violet-700 transition-transform transform hover:scale-105">
                         + 建立新目標
                     </button>
                 </div>
