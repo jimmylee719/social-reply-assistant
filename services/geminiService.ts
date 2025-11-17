@@ -2,9 +2,9 @@ import { Gender, Goal, TargetProfile, TopicCategory, Interaction, AssistantMode,
 import { saveInteraction } from './userService';
 
 // This service acts as a client to our own backend API route (/api/gemini),
-// which securely handles the Gemini API calls on the server-side via streaming.
+// which securely handles the Gemini API calls on the server-side.
 
-// Generic API call helper to handle streamed responses
+// Generic API call helper
 const callApi = async (action: string, payload: any) => {
     try {
         const response = await fetch('/api/gemini', {
@@ -15,30 +15,14 @@ const callApi = async (action: string, payload: any) => {
             body: JSON.stringify({ action, payload }),
         });
 
+        const result = await response.json();
+
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: 'An unknown AI generation error occurred.' }));
-            throw new Error(errorData.message || `API request failed with status ${response.status}`);
+            // Use the error message from the backend, or a default
+            throw new Error(result.message || `API request failed with status ${response.status}`);
         }
 
-        // Handle the streaming response
-        if (!response.body) {
-            throw new Error("Streaming response not supported.");
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let fullResponse = '';
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-                break;
-            }
-            fullResponse += decoder.decode(value, { stream: true });
-        }
-
-        // The full response is now a complete JSON string, parse it.
-        return JSON.parse(fullResponse);
+        return result;
 
     } catch (error: any) {
         console.error(`API client error for action '${action}':`, error);
