@@ -112,7 +112,7 @@ export default async function handler(request: Request) {
             case 'translateWithCulturalContext': {
                  const { textToTranslate, gender, goal, profile } = payload;
                  systemInstruction = getSystemInstruction(gender, goal, profile, null);
-                 prompt = `Transcreate the following text. This is not a literal translation. Adapt the original intent, tone, and nuance to sound natural in the target language (English or Traditional Chinese), fitting the user's goal.\n\nText to Transcreate:\n${textToTranslate}\n\nCRITICAL: Format your output as a valid JSON object with a single key "translation" containing the transcreated string.`;
+                 prompt = `Your task is to transcreate the following text. First, identify if the text is primarily in English or Traditional Chinese. Then, translate it to the *other* language. For example, if the input is English, translate it to Traditional Chinese. If the input is Traditional Chinese, translate it to English. This is not a literal translation. Adapt the original intent, tone, and nuance to sound natural in the target language, fitting the user's goal.\n\nText to Transcreate:\n${textToTranslate}\n\nCRITICAL: Format your output as a valid JSON object with a single key "translation" containing the transcreated string.`;
                  return await generateJsonResponse(prompt, systemInstruction, ai);
             }
 
