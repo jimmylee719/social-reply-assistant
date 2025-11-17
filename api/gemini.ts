@@ -1,7 +1,7 @@
 // This file should be placed in the /api directory at the root of your project.
 // e.g. /api/gemini.ts
 
-import { GoogleGenAI, GenerateContentResponse } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { Gender, Goal, TargetProfile, Tone, User, Target } from '../types';
 
 // This config specifies the Vercel runtime. Edge is fast and recommended.
@@ -10,7 +10,6 @@ export const config = {
 };
 
 const getClient = () => {
-  // This runs on the server, so process.env.API_KEY is available and secure.
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
       throw new Error("API_KEY environment variable is not set.");
@@ -35,10 +34,7 @@ const getBasePrompt = (gender: Gender, goal: Goal, profile: TargetProfile, tone:
       [Tone.Gentle]: 'gentle and considerate',
   };
 
-  const genderContext = gender === Gender.Male
-    ? "User is male."
-    : "User is female.";
-
+  const genderContext = gender === Gender.Male ? "User is male." : "User is female.";
   const profileString = Object.entries(profile).filter(([, val]) => val).map(([key, val]) => `${key}: ${val}`).join(', ') || 'Not specified';
 
   return `
@@ -51,25 +47,37 @@ const getBasePrompt = (gender: Gender, goal: Goal, profile: TargetProfile, tone:
   `;
 };
 
-// Helper to handle JSON parsing and response creation
-const createJsonResponse = (text: string, status: number = 200) => {
-    try {
-        // The AI's response is a string, which we expect to be JSON.
-        const jsonData = JSON.parse(text);
-        return new Response(JSON.stringify(jsonData), {
-            status,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    } catch (e) {
-        console.error("Failed to parse AI JSON response:", text);
-        // If parsing fails, return an error.
-        return new Response(JSON.stringify({ message: "AI returned an invalid response format." }), {
-            status: 500,
-            headers: { 'Content-Type': 'application/json' }
-        });
-    }
-};
+// Helper to stream the AI response
+const streamAIResponse = async (prompt: string, ai: GoogleGenAI) => {
+    const encoder = new TextEncoder();
+    const readableStream = new ReadableStream({
+        async start(controller) {
+            try {
+                const stream = await ai.models.generateContentStream({
+                    model: 'gemini-flash-latest',
+                    contents: prompt,
+                });
 
+                for await (const chunk of stream) {
+                    if (chunk.text) {
+                        controller.enqueue(encoder.encode(chunk.text));
+                    }
+                }
+                controller.close();
+            } catch (error: any) {
+                console.error('Error during AI stream generation:', error);
+                controller.error(new Error('Failed to generate AI response.'));
+            }
+        },
+    });
+
+    return new Response(readableStream, {
+        headers: { 
+            'Content-Type': 'text/plain; charset=utf-8',
+            'X-Content-Type-Options': 'nosniff',
+        },
+    });
+};
 
 export default async function handler(request: Request) {
     if (request.method !== 'POST') {
@@ -83,7 +91,6 @@ export default async function handler(request: Request) {
         const ai = getClient();
         
         let prompt: string;
-        let response: GenerateContentResponse;
 
         switch (action) {
             case 'generateTopic': {
@@ -96,11 +103,7 @@ export default async function handler(request: Request) {
                     Format the output as a valid JSON object with a single key "openers", which is an array of three strings.
                     Example: {"openers": ["opener1", "opener2", "opener3"]}
                 `;
-                response = await ai.models.generateContent({
-                    model: 'gemini-flash-latest', 
-                    contents: prompt, 
-                });
-                return createJsonResponse(response.text);
+                return await streamAIResponse(prompt, ai);
             }
 
             case 'analyzeAndSuggestReply': {
@@ -118,11 +121,7 @@ export default async function handler(request: Request) {
                     1. "analysis": A string containing a brief strategic analysis of the conversation (in Traditional Chinese).
                     2. "suggestions": An array of three distinct reply suggestion strings (matching the conversation's language).
                 `;
-                response = await ai.models.generateContent({
-                    model: 'gemini-flash-latest', 
-                    contents: prompt, 
-                });
-                return createJsonResponse(response.text);
+                return await streamAIResponse(prompt, ai);
             }
 
             case 'analyzeIntent': {
@@ -141,11 +140,7 @@ export default async function handler(request: Request) {
                     2. "reasoning": A string with a brief explanation for your choice (in Traditional Chinese).
                     3. "confidence": An integer between 0 and 100 representing your confidence level.
                 `;
-                 response = await ai.models.generateContent({
-                    model: 'gemini-flash-latest', 
-                    contents: prompt, 
-                });
-                return createJsonResponse(response.text);
+                return await streamAIResponse(prompt, ai);
             }
 
             case 'translateWithCulturalContext': {
@@ -154,18 +149,16 @@ export default async function handler(request: Request) {
                  prompt = `
                     ${basePrompt}
                     Task: Transcreate the following text. This is not a literal translation. Adapt the original intent, tone, and nuance to sound natural in the target language (English or Traditional Chinese), fitting the user's goal.
-                    CRITICAL: Return ONLY the transcreated string, with no additional text, labels, or JSON formatting.
+                    
+                    CRITICAL: Format your output as a valid JSON object with a single key "translation" containing the transcreated string.
+                    Example: {"translation": "Your translated text here."}
 
                     Text to Transcreate:
                     ---
                     ${textToTranslate}
                     ---
                 `;
-                response = await ai.models.generateContent({
-                    model: 'gemini-flash-latest', 
-                    contents: prompt
-                });
-                return new Response(JSON.stringify({ translation: response.text.trim() }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+                return await streamAIResponse(prompt, ai);
             }
 
             default:
