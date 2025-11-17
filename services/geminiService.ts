@@ -2,24 +2,28 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { Gender, Goal, TargetProfile, TopicCategory, Interaction, AssistantMode, User, Target, Tone, AnalysisResponse, IntentResponse } from '../types';
 import { saveInteraction } from './userService';
 
-// This implementation moves the Gemini API calls to the client-side.
-// This is necessary to resolve the "API Key must be set" error in deployment environments
-// that do not support server-side functions in an /api directory and instead bundle all code
-// for the browser.
-// It assumes that the `process.env.API_KEY` variable is made available to the
-// client-side code by the deployment platform's build process.
+// This implementation runs the Gemini API calls on the client-side.
+// It is updated to read the API key from `process.env.VITE_API_KEY`, which is the standard
+// for exposing environment variables to the browser in Vite-based projects deployed on Vercel.
 
-// --- Client-side Gemini Initialization ---
-let ai: GoogleGenAI;
+let ai: GoogleGenAI | undefined;
 try {
-  ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+  // Per the user's report, they are using Vercel and have set VITE_API_KEY for client-side access.
+  // This code attempts to read that variable.
+  // Note: `process.env` is often polyfilled by build tools like Vite in the browser.
+  const apiKey = (process.env as any).VITE_API_KEY || (process.env as any).API_KEY;
+  if (!apiKey) {
+    // This error will be caught by the catch block below.
+    throw new Error("API key not found in environment variables (VITE_API_KEY or API_KEY).");
+  }
+  ai = new GoogleGenAI({ apiKey });
 } catch (error) {
-  console.error("Failed to initialize GoogleGenAI. Make sure API_KEY is set in your environment.", error);
-  // We'll let individual calls fail to provide a more specific error to the user.
+  console.error("Failed to initialize GoogleGenAI.", error);
+  // 'ai' remains undefined, and subsequent calls will fail with a helpful message.
 }
 
 
-// --- Response Schemas for guaranteed JSON output (copied from original /api/gemini.ts) ---
+// --- Response Schemas for guaranteed JSON output ---
 const generateTopicSchema = {
   type: Type.OBJECT,
   properties: {
@@ -68,7 +72,7 @@ const analyzeIntentSchema = {
 };
 
 
-// --- Prompt Generation Logic (copied from original /api/gemini.ts) ---
+// --- Prompt Generation Logic ---
 const getBasePrompt = (gender: Gender, goal: Goal, profile: TargetProfile, tone: Tone | null): string => {
   const goalMap: Record<Goal, string> = {
     [Goal.Friendship]: '純粹交朋友',
@@ -114,11 +118,14 @@ const getBasePrompt = (gender: Gender, goal: Goal, profile: TargetProfile, tone:
 // --- Generic Error Handler ---
 const handleApiError = (error: any): Error => {
     console.error('Gemini API call error:', error);
-    const message = error?.message || String(error);
+    const message = String(error?.message || error);
     if (message.includes('API key not valid')) {
-       return new Error('AI 生成失敗，您的 API Key 無效或未設定。');
+       return new Error('AI 生成失敗：API Key 無效或權限不足。');
     }
-    return new Error('AI 生成失敗，請檢查您的網路連線或稍後再試。');
+    if (message.includes('API key not found') || message.includes('API_KEY might be missing')) {
+       return new Error('AI 生成失敗：找不到 API Key。請確認您的 Vercel/部署 環境變數是否已正確設定為 VITE_API_KEY。');
+    }
+    return new Error('AI 生成失敗：請檢查您的網路連線或稍後再試。');
 }
 
 // --- Rewritten Service Functions ---
@@ -127,7 +134,7 @@ export const generateTopic = async (
   interactionData: Omit<Interaction, 'id' | 'timestamp' | 'result' | 'conversation'> & { gender: Gender; profile: TargetProfile, tone: Tone },
   topicCategory: TopicCategory
 ): Promise<string[]> => {
-  if (!ai) throw new Error('Gemini client not initialized. API_KEY might be missing.');
+  if (!ai) throw new Error('Gemini client not initialized. API_KEY might be missing in your environment variables.');
   
   const { gender, goal, profile, tone } = interactionData;
   const basePrompt = getBasePrompt(gender, goal, profile, tone);
@@ -157,7 +164,7 @@ export const generateTopic = async (
 export const analyzeAndSuggestReply = async (
   interactionData: Omit<Interaction, 'id' | 'timestamp' | 'result'> & { gender: Gender; profile: TargetProfile; tone: Tone },
 ): Promise<AnalysisResponse> => {
-  if (!ai) throw new Error('Gemini client not initialized. API_KEY might be missing.');
+  if (!ai) throw new Error('Gemini client not initialized. API_KEY might be missing in your environment variables.');
   
   const { gender, goal, profile, conversation, tone } = interactionData;
   const basePrompt = getBasePrompt(gender, goal, profile, tone);
@@ -194,7 +201,7 @@ export const analyzeIntent = async (
   user: User,
   target: Target
 ): Promise<IntentResponse> => {
-    if (!ai) throw new Error('Gemini client not initialized. API_KEY might be missing.');
+    if (!ai) throw new Error('Gemini client not initialized. API_KEY might be missing in your environment variables.');
 
     const { conversation } = interactionData;
     const userName = user.email.split('@')[0];
@@ -243,7 +250,7 @@ export const translateWithCulturalContext = async (
   goal: Goal,
   profile: TargetProfile
 ): Promise<string> => {
-    if (!ai) throw new Error('Gemini client not initialized. API_KEY might be missing.');
+    if (!ai) throw new Error('Gemini client not initialized. API_KEY might be missing in your environment variables.');
 
     const basePrompt = getBasePrompt(gender, goal, profile, null);
     const prompt = `
