@@ -37,38 +37,38 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onLogout }) => {
         <div className="min-h-screen container mx-auto p-4 md:p-8 animate-fade-in">
             <header className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">管理員後台</h1>
-                <button onClick={onLogout} className="text-sm text-primary hover:underline">登出</button>
+                <button onClick={onLogout} className="text-sm text-violet-600 hover:underline">登出</button>
             </header>
 
-            <div className="bg-surface p-6 rounded-2xl shadow-2xl">
+            <div className="bg-gray-800 p-6 rounded-2xl shadow-2xl">
                 <h2 className="text-2xl font-bold mb-4">用戶列表</h2>
                 <div className="space-y-2">
                     {users.map(user => (
                         <div key={user.id}>
                             <button
                                 onClick={() => handleUserSelect(user.id)}
-                                className="w-full text-left p-4 bg-background rounded-lg border border-gray-700 hover:border-primary transition-colors duration-200 flex justify-between items-center"
+                                className="w-full text-left p-4 bg-gray-900 rounded-lg border border-gray-700 hover:border-violet-600 transition-colors duration-200 flex justify-between items-center"
                             >
                                 <div>
-                                    <p className="font-semibold text-text-primary">{user.email}</p>
-                                    <p className="text-sm text-text-secondary">性別: {user.gender === 'male' ? '男' : '女'}</p>
+                                    <p className="font-semibold text-gray-50">{user.email}</p>
+                                    <p className="text-sm text-gray-300">性別: {user.gender === 'male' ? '男' : '女'}</p>
                                 </div>
                                 <span className={`transform transition-transform ${selectedUserId === user.id ? 'rotate-90' : ''}`}>▶</span>
                             </button>
 
                             {selectedUserId === user.id && (
-                                <div className="p-4 bg-background/50 rounded-b-lg space-y-4">
+                                <div className="p-4 bg-gray-900/50 rounded-b-lg space-y-4">
                                     <h3 className="font-bold text-lg">最近 7 天活動紀錄</h3>
                                     {interactions[user.id] && interactions[user.id].length > 0 ? (
                                         interactions[user.id].map(interaction => (
-                                            <div key={interaction.id} className="p-3 border-l-2 border-primary bg-gray-900/50 rounded-r-lg">
-                                                <p className="text-sm text-text-secondary">{new Date(interaction.timestamp).toLocaleString()}</p>
+                                            <div key={interaction.id} className="p-3 border-l-2 border-violet-600 bg-gray-900/50 rounded-r-lg">
+                                                <p className="text-sm text-gray-300">{new Date(interaction.timestamp).toLocaleString()}</p>
                                                 <p><span className="font-semibold">目標意圖:</span> {goalLabelMap[interaction.goal] || interaction.goal}</p>
                                                 {interaction.conversation && <p className="mt-2"><span className="font-semibold">對話內容:</span><br/><span className="text-sm text-gray-400 whitespace-pre-wrap">{interaction.conversation}</span></p>}
                                             </div>
                                         ))
                                     ) : (
-                                        <p className="text-text-secondary">此用戶最近 7 天沒有活動紀錄。</p>
+                                        <p className="text-gray-300">此用戶最近 7 天沒有活動紀錄。</p>
                                     )}
                                 </div>
                             )}
